@@ -13,6 +13,14 @@ cat $TMP_DIR/commit.diff |  $TMP_DIR/showlinenum.awk show_header=0 path=1 | grep
 ./autogen.sh; make distclean
 cd obj-aflgo; CFLAGS="$ADDITIONAL" CXXFLAGS="$ADDITIONAL" ../configure --disable-shared --prefix=`pwd`
 make clean; make -j4
+
+# pato: starts
+# cat $TMP_DIR/FfirstBB.txt | sort | uniq > $TMP_DIR/FfirstBB2.txt && mv $TMP_DIR/FfirstBB2.txt $TMP_DIR/FfirstBB.txt
+$AFLGO/scripts/patoDominance.sh $SUBJECT $TMP_DIR xmllint
+cat $TMP_DIR/BBtargets.txt $TMP_DIR/DomBB.txt $TMP_DIR/DomBBcg.txt | sort | uniq > $TMP_DIR/BBtargets2.txt && mv $TMP_DIR/BBtargets2.txt $TMP_DIR/BBtargets.txt
+make clean; make -j4
+# pato: ends
+
 cat $TMP_DIR/BBnames.txt | rev | cut -d: -f2- | rev | sort | uniq > $TMP_DIR/BBnames2.txt && mv $TMP_DIR/BBnames2.txt $TMP_DIR/BBnames.txt
 cat $TMP_DIR/BBcalls.txt | sort | uniq > $TMP_DIR/BBcalls2.txt && mv $TMP_DIR/BBcalls2.txt $TMP_DIR/BBcalls.txt
 $AFLGO/scripts/genDistance.sh $SUBJECT $TMP_DIR xmllint

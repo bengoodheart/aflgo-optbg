@@ -1,25 +1,18 @@
 /*
    american fuzzy lop - LLVM-mode instrumentation pass
    ---------------------------------------------------
-
    Written by Laszlo Szekeres <lszekeres@google.com> and
               Michal Zalewski <lcamtuf@google.com>
-
    LLVM integration design comes from Laszlo Szekeres. C bits copied-and-pasted
    from afl-as.c are Michal's fault.
-
    Copyright 2015, 2016 Google Inc. All rights reserved.
-
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at:
-
      http://www.apache.org/licenses/LICENSE-2.0
-
    This library is plugged into LLVM when invoking clang through afl-clang-fast.
    It tells the compiler to add code roughly equivalent to the bits discussed
    in ../afl-as.h.
-
  */
 
 #define AFL_LLVM_PASS
@@ -50,6 +43,11 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/CFGPrinter.h"
+
+// pato:
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/ValueMap.h"
+#include <vector>
 
 #if defined(LLVM34)
 #include "llvm/DebugInfo.h"
@@ -291,6 +289,10 @@ bool AFLCoverage::runOnModule(Module &M) {
     std::ofstream fnames(OutDirectory + "/Fnames.txt", std::ofstream::out | std::ofstream::app);
     std::ofstream ftargets(OutDirectory + "/Ftargets.txt", std::ofstream::out | std::ofstream::app);
 
+    // pato:
+    std::ofstream domBB(OutDirectory + "/DomBB.txt", std::ofstream::out | std::ofstream::app);
+    std::ofstream ffirstBB(OutDirectory + "/FfirstBB.txt", std::ofstream::out | std::ofstream::app);
+
     /* Create dot-files directory */
     std::string dotfiles(OutDirectory + "/dot-files");
     if (sys::fs::create_directory(dotfiles)) {
@@ -306,6 +308,9 @@ bool AFLCoverage::runOnModule(Module &M) {
       if (isBlacklisted(&F)) {
         continue;
       }
+
+      // pato: first instr of F
+      bool is_first_instr = true;
 
       bool is_target = false;
       for (auto &BB : F) {
@@ -329,6 +334,14 @@ bool AFLCoverage::runOnModule(Module &M) {
               filename = filename.substr(found + 1);
 
             bb_name = filename + ":" + std::to_string(line);
+          }
+
+          // pato:
+          if (is_first_instr)
+          {
+            if (!funcName.empty())
+              ffirstBB << funcName << "," << bb_name << "\n";
+            is_first_instr = false;
           }
 
           if (!is_target) {
@@ -387,6 +400,31 @@ bool AFLCoverage::runOnModule(Module &M) {
           Builder.CreateCall(instrumented, {bbnameVal});
 #endif
 
+        }
+
+        // pato:
+        if (is_target)
+        {
+          DominatorTree DT(F);
+          GraphTraits<DominatorTree *> GT;
+          for (auto it = GT.nodes_begin(&DT); it != GT.nodes_end(&DT); it++)
+          {
+            auto dnode = *it;
+            if (DT.dominates(dnode, DT.getNode(&BB)))
+            {
+              if (dnode->getBlock())
+              {
+                for (auto &I : *dnode->getBlock())
+                {
+                  getDebugLoc(&I, filename, line);
+                  std::size_t found = filename.find_last_of("/\\");
+                  if (found != std::string::npos)
+                    filename = filename.substr(found + 1);
+                  domBB << filename << ":" << line << "\n";
+                }
+              }
+            }
+          }
         }
       }
 
