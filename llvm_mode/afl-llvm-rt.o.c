@@ -44,7 +44,7 @@ hashset_t edgeSet;
 static FILE* filefd = NULL;
 static char edgeStr[1024];
 
-static const unsigned int prime_1 = 73;
+static const unsigned int prime_1 = 661;
 static const unsigned int prime_2 = 5009;
 /* End of profiling variables */
 #endif /* ^AFLGO_TRACING */
