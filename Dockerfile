@@ -9,3 +9,4 @@ RUN git clone https://github.com/bengoodheart/aflgo-optbg.git ${AFLGO} &&\
 WORKDIR ${AFLGO}
 
 # ENTRYPOINT [ "/aflgo/entrypoint.sh" ]
+
